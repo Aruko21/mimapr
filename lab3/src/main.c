@@ -96,7 +96,7 @@ double *solution(double *y, double **A) {
     for (int k = 0; k < time_end; ++k) {
         for (int i = 0; i < y_nodes; ++i) {
             for (int j = 0; j < x_nodes; ++j) {
-                if (j > 0 && i > 0 && i > (j - top_border / h)) {
+                if (j > 0 && i > 0 && i > (j - top_border / h) && j < (x_nodes - 1)) {
 
                     y[i * x_nodes + j] = -x[i * x_nodes + j];
                 }
