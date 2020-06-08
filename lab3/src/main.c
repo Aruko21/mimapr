@@ -96,9 +96,9 @@ double *solution(double *y, double **A) {
     for (int k = 0; k < time_end; ++k) {
         for (int i = 0; i < y_nodes; ++i) {
             for (int j = 0; j < x_nodes; ++j) {
-                if (j > 0 && i > 0 && i > (j - top_border / h) && j < (x_nodes - 1)) {
+                if (j > 0 && i > 0 && i < y_nodes - 1 && i > (j - top_border / h) && j < (x_nodes - 1)) {
 
-                    y[i * x_nodes + j] = -x[i * x_nodes + j];
+                    y[i * x_nodes + j] = x[i * x_nodes + j];
                 }
             }
         }
@@ -119,8 +119,8 @@ void initialise(double **vector, double ***matrix) {
                 (*vector)[i * x_nodes + j] = 100;
                 (*matrix)[i * x_nodes + j][i * x_nodes + j] = 1;
             } else if (i == y_nodes - 1) { // Нижняя граница - ГУ 3-го рода (-1 т.к. индексация с нуля)
-                (*matrix)[i * x_nodes + j][i * x_nodes + j] = 1 / h + 1;
-                (*matrix)[i * x_nodes + j][(i - 1) * x_nodes + j] = -1 / h;
+                (*matrix)[i * x_nodes + j][i * x_nodes + j] = -1 / h - 1;
+                (*matrix)[i * x_nodes + j][(i - 1) * x_nodes + j] = 1 / h;
                 (*vector)[i * x_nodes + j] = temp_init; // начальное условие нестационарной задачи
             } else if (j >= top_border / h && i == (j - top_border / h)) { // Правая скошенная граница - ГУ 2-го рода
                 double cos_45 = sqrt(2) / 2;
@@ -137,11 +137,11 @@ void initialise(double **vector, double ***matrix) {
                 (*matrix)[i * x_nodes + j][i * x_nodes + j - 1] = -1 / h;
                 (*vector)[i * x_nodes + j] = 20;
             } else if (j < x_nodes - 1) { // Остальные (внутренние) узлы
-                (*matrix)[i * x_nodes + j][i * x_nodes + j] = -2 / (h * h) - 2 / (h * h) - 1;
-                (*matrix)[i * x_nodes + j][i * x_nodes + j + 1] = 1 / (h * h);
-                (*matrix)[i * x_nodes + j][i * x_nodes + j - 1] = 1 / (h * h);
-                (*matrix)[i * x_nodes + j][(i + 1) * x_nodes + j] = 1 / (h * h);
-                (*matrix)[i * x_nodes + j][(i - 1) * x_nodes + j] = 1 / (h * h);
+                (*matrix)[i * x_nodes + j][i * x_nodes + j] = 1 + 2 / (h * h) + 2 / (h * h);
+                (*matrix)[i * x_nodes + j][i * x_nodes + j + 1] = - 1 / (h * h);
+                (*matrix)[i * x_nodes + j][i * x_nodes + j - 1] = - 1 / (h * h);
+                (*matrix)[i * x_nodes + j][(i + 1) * x_nodes + j] = - 1 / (h * h);
+                (*matrix)[i * x_nodes + j][(i - 1) * x_nodes + j] = - 1 / (h * h);
             }
         }
     }
