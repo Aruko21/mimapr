@@ -1,0 +1,4 @@
+lab3/examples/
+.idea/
+cmake-build-debug/
+*.o
