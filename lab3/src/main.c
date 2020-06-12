@@ -124,9 +124,8 @@ void initialise(double **vector, double ***matrix) {
                 (*vector)[i * x_nodes + j] = temp_init; // начальное условие нестационарной задачи
             } else if (j >= top_border / h && i == (j - top_border / h)) { // Правая скошенная граница - ГУ 2-го рода
                 double cos_45 = sqrt(2) / 2;
-                (*matrix)[i * x_nodes + j][i * x_nodes + j] = cos_45 * (1 / h + 1 / h);
-                (*matrix)[i * x_nodes + j][i * x_nodes + j - 1] = -(1 / h) * cos_45;
-                (*matrix)[i * x_nodes + j][(i + 1) * x_nodes + j] = -(1 / h) * cos_45;
+                (*matrix)[i * x_nodes + j][i * x_nodes + j] = 1 / (sqrt(2) * h);
+                (*matrix)[i * x_nodes + j][(i + 1) * x_nodes + j - 1] = - 1 / (sqrt(2) * h);
                 (*vector)[i * x_nodes + j] = 20;
             } else if (i * h <= (height - right_border) && j >= top_border / h &&
                        i <= (j - top_border / h)) { // Пустая область
