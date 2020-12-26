@@ -4,3 +4,5 @@ cmake-build-debug/
 *.o
 lab_fem/lab_fem
 lab_pa9/lab_pa9
+lab_pa9/gnuscript.gnuplot
+lab_pa9/solution_phi4.dat
