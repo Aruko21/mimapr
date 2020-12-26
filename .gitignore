@@ -2,3 +2,5 @@ lab3/examples/
 .idea/
 cmake-build-debug/
 *.o
+lab_fem/lab_fem
+lab_pa9/lab_pa9
