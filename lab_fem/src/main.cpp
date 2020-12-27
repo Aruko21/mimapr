@@ -17,7 +17,7 @@ constexpr size_t CUBE_DIM = 4;
 constexpr size_t ELEMS_NUM = 410;
 constexpr double L = (X_END - X_BEGIN) / ELEMS_NUM;
 
-std::vector<double> solve_with_gauss(std::vector<std::vector<double> > &A, std::vector<double> &b) {
+std::vector<double> gauss(std::vector<std::vector<double> > &A, std::vector<double> &b) {
     size_t row_size = A.size();
     size_t col_size = A.back().size();
 
@@ -109,7 +109,7 @@ std::vector<double> build_linear_solution(size_t elems_num) {
     }
 
     // Solving
-    std::vector<double> res = solve_with_gauss(A, b);
+    std::vector<double> res = gauss(A, b);
     res.at(0) = FIRST_BC;
     res.at(size - 1) = SECOND_BC;
 
@@ -208,7 +208,7 @@ std::vector<double> build_cube_solution(size_t elems_num) {
     }
 
     // Solving
-    std::vector<double> res = solve_with_gauss(A, b);
+    std::vector<double> res = gauss(A, b);
     res.at(0) = FIRST_BC;
     res.at(size - 1) = SECOND_BC;
 

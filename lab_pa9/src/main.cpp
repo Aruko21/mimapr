@@ -5,48 +5,57 @@
 #include <fstream>
 #include <iomanip>
 
+// Input signal settings
 constexpr double In1_T = 1e-4;
 constexpr double In1_A = 10.0;
 
+// Scheme model settings
 constexpr double L1 = 1e-3;
 constexpr double C1 = 1e-9;
 constexpr double C2 = 1e-9;
 
+// Diode settings
 constexpr double It = 1e-12;
 constexpr double Cb = 2e-12;
 constexpr double MFt = 0.026;
 constexpr double Ru = 1e6;
 constexpr double RB = 20.0;
 
+// Gnuplot settings
 constexpr char GNUPLOT_FILENAME[] = "gnuscript.gnuplot";
 constexpr char RES_FILENAME[] = "solution_phi4.dat";
+constexpr int RESULTS_DIGITS = 13;
 
-constexpr int FIELD_W = 15;
-constexpr double CALC_TIME = 1e-3;
+// Dimensions settings
 constexpr size_t DIMENSION = 13;
 constexpr size_t N_MAX = 10;
 
+// Accuracy settings
 constexpr double EPS = 1e-4;
 constexpr double eps_max = 1e-3;
 constexpr double eps_min = 1e-5;
 
+// Time step settings
+constexpr double CALC_TIME = 1e-3;
 double t_current = 0;
-
 double dt = 1e-8;
 double dt_corrected = dt;
 double prev_dt = dt;
 double dt_min = dt;
 
-enum Base_vars {
+// Indices for M matrix and B vector
+enum Indices {
     d_phi1 = 0, d_phi2, d_phi3, d_phi4, int_phi1, int_phi2, int_phi3,
     int_phi4, phi1, phi2, phi3, phi4, Ie,
 };
 
 double get_E(double t) {
+    // Get the voltage value by time
     return In1_A * sin(2 * M_PI / In1_T * t);
 }
 
-void fill_M(std::vector<std::vector<double>> &M, const std::vector<double> &cur_X) {
+void M_fill(std::vector<std::vector<double>> &M, const std::vector<double> &cur_X) {
+    // M matrix filling according the math model
     double I_t_deriv = It / MFt * std::exp((cur_X.at(phi3) - cur_X.at(phi4)) / MFt);
 
     M.at(d_phi1).at(d_phi1) = 1.0;
@@ -96,7 +105,8 @@ void fill_M(std::vector<std::vector<double>> &M, const std::vector<double> &cur_
     M.at(Ie).at(phi2) = 1.0;
 }
 
-void fill_B(std::vector<double> &B, const std::vector<double> &cur_X, const std::vector<double> &prev_X) {
+void B_fill(std::vector<double> &B, const std::vector<double> &cur_X, const std::vector<double> &prev_X) {
+    // B vector filling according the math model
     double I_equation = It * (std::exp((cur_X.at(phi3) - cur_X.at(phi4)) / MFt) - 1);
 
     B.at(d_phi1) = -(cur_X.at(d_phi1) - (cur_X.at(phi1) - prev_X.at(phi1)) / dt);
@@ -119,16 +129,16 @@ void fill_B(std::vector<double> &B, const std::vector<double> &cur_X, const std:
     B.at(Ie) = -(cur_X.at(phi2) - cur_X.at(phi1) - get_E(t_current));
 }
 
-std::vector<double> solve_with_gauss(std::vector<std::vector<double> > &A, std::vector<double> &b) {
+std::vector<double> gauss(std::vector<std::vector<double> > &A, std::vector<double> &b) {
     size_t max_ind = 0;
     double max_el = 0.0;
 
-    // Прямой ход метода Гаусса
+    // Forward Gauss substitution
     for (size_t i = 0; i < DIMENSION; ++i) {
         max_el = std::abs(A.at(i).at(i));
         max_ind = i;
 
-        // Поиск максимального элемента в столбце
+        // Find max element in row
         for (size_t k = i + 1; k < DIMENSION; ++k) {
             double cur_el = std::abs(A.at(k).at(i));
             if (cur_el > max_el) {
@@ -137,16 +147,16 @@ std::vector<double> solve_with_gauss(std::vector<std::vector<double> > &A, std::
             }
         }
 
-        // Если максимальный элемент ноль, то столбец нулевой
+        // If max element is zero, then the whole col is zeroed
         if (max_el < EPS) {
-            throw std::domain_error("Нулевой столбец в матрице.");
+            throw std::domain_error("Zero col found");
         }
 
-        // Перестановка строк
+        // Rows replacing
         std::swap(A.at(i), A.at(max_ind));
         std::swap(b.at(i), b.at(max_ind));
 
-        // Матричные преобразования
+        // Matrix transformations
         double diag = A.at(i).at(i);
         for (size_t j = i; j < DIMENSION; ++j) {
             A.at(i).at(j) /= diag;
@@ -163,7 +173,7 @@ std::vector<double> solve_with_gauss(std::vector<std::vector<double> > &A, std::
         }
     }
 
-    // Обратный ход метода Гаусса
+    // Backward Gauss substitution
     std::vector<double> X(DIMENSION);
     for (int i = DIMENSION - 1; i >= 0; --i) {
         X.at(i) = b.at(i);
@@ -175,7 +185,7 @@ std::vector<double> solve_with_gauss(std::vector<std::vector<double> > &A, std::
     return X;
 }
 
-bool is_delta_X_le_EPS(const std::vector<double> &delta_X) {
+bool is_dX_converge(const std::vector<double> &delta_X) {
     for (int i = 0; i < DIMENSION; ++i) {
         if (std::abs(delta_X.at(i)) < EPS) {
             continue;
@@ -189,7 +199,7 @@ bool is_delta_X_le_EPS(const std::vector<double> &delta_X) {
 void make_gnuplot_script() {
     std::ofstream gnuscript_file(GNUPLOT_FILENAME);
 
-    gnuscript_file << "set term wxt title 'График зависимости phi4(t)'" << std::endl;
+    gnuscript_file << "set term wxt title 'phi4(t) plot'" << std::endl;
     gnuscript_file << "set key right bottom" << std::endl;
     gnuscript_file << "set grid" << std::endl;
     gnuscript_file << "set xrange[" << 0 << ':' << CALC_TIME << ']' << std::endl;
@@ -214,55 +224,56 @@ int main() {
     std::vector<std::vector<double> > M(DIMENSION, std::vector<double>(DIMENSION));
     std::vector<double> B(DIMENSION);
 
-    std::cout << "Идетрасчет..." << std::endl;
+    std::cout << "Calculaing started" << std::endl;
 
     while (t_current < CALC_TIME) {
         dt = dt_corrected;
         bool is_feasible_delta_X = false;
         size_t n = 0;
+
+        // Getting accurate augment
         while (!is_feasible_delta_X) {
-            // Заполняем матрицу узловых проводимостей нулями
+            // Matrix initialize
             for (auto &row : M) {
                 std::fill(row.begin(), row.end(), 0);
             }
 
-            // Заполняем матрицу узловых проводимсотей и вектор невязок значениями
-            fill_M(M, cur_X);
-            fill_B(B, cur_X, prev_X);
+            // Matrix and vector filling
+            M_fill(M, cur_X);
+            B_fill(B, cur_X, prev_X);
 
-            // Решаем СЛАУ методом Гаусса и находим вектор поправок
-            delta_X = solve_with_gauss(M, B);
+            // Find vector of amendments
+            delta_X = gauss(M, B);
 
-            // Делаем приращение на величину вектора поправок
+            // Augmentation on the amendment value
             for (size_t i = 0; i < cur_X.size(); ++i) {
                 cur_X.at(i) += delta_X.at(i);
             }
 
-            // Проверяем, что полученные приращения меньше EPS
-            is_feasible_delta_X = is_delta_X_le_EPS(delta_X);
+            // Check the augment accuracy
+            is_feasible_delta_X = is_dX_converge(delta_X);
 
-            // Продолжаем итерации метода Ньютона, если приращение не удовлетворяет по точности (не меньше EPS)
+            // If augment not accurate as EPS, then do another Newton iteration
             if (!is_feasible_delta_X) {
-                // Следующая итерация метода Ньютона
                 n++;
 
-                // Проверяем, не превышено ли маскимальное число итераций для метода Ньютона
+                // Check the number of iterations for step changing
                 if (n > N_MAX) {
-                    // Если превышено, то отбрасываем текущий шаг и меняем шаг по времени
+                    // Change time step
                     n = 0;
                     dt *= 0.5;
                     cur_X = prev_X;
 
-                    // Проверяем сходимость решения
+                    // Check the convergence of solution
                     if (dt < dt_min) {
-                        throw std::domain_error("Решение не сходится.");
+                        std::cerr << "Solution doesn't converge" << std::endl;
+                        return 1;
                     }
                 }
             }
         }
-        // Получено допустимое по точности приращение
 
-        // Рассчитываем дельту
+        // Delta calculating
         double cur_delta = 0.0;
         for (int i = 0; i < DIMENSION; ++i) {
             double tmp = 0.5 * dt * ((cur_X.at(i) - prev_X.at(i)) / dt -
@@ -270,23 +281,23 @@ int main() {
             cur_delta = (tmp > cur_delta) ? tmp : cur_delta;
         }
 
-        // Если интегрирование неудовлетворительно по точности
+        // Check accuracy of integration
         if (cur_delta > eps_max && dt_corrected > dt_min) {
-            // Уменьшаем шаг по времени и отбрасываем результаты текущего шага
+            // Reduce time step and rewrite previous step results
             dt_corrected *= 0.5;
             cur_X = prev_X;
         } else {
-            // Удовлетворительная точность, переход к следующему шагу
-            // Сохранение значений с предыдущего шага
+            // If accuracy is satisfactory, go to the next step
+            // Save values from previous step
             prev_prev_X = prev_X;
             prev_X = cur_X;
             prev_dt = dt;
 
-            // Вывод значения phi_4 на текущем временном шаге
-            phi4_res_file << std::setw(FIELD_W) << t_current;
-            phi4_res_file << std::setw(FIELD_W) << cur_X.at(phi4) << std::endl;
+            // Print phi4 value on the current step with fixed number of digits
+            phi4_res_file << std::setw(RESULTS_DIGITS) << t_current;
+            phi4_res_file << std::setw(RESULTS_DIGITS) << cur_X.at(phi4) << std::endl;
 
-            // Шаг по времени
+            // Time step
             t_current += dt;
 
             if (cur_delta < eps_min || dt_corrected < dt_min) {
@@ -296,15 +307,15 @@ int main() {
             }
         }
 
-        // Проверяем сходимость решения
+        // Check solution convergence
         if (dt_corrected < dt_min) {
-            throw std::domain_error("Решение не сходится.");
+            std::cerr << "Solution doesn't converge" << std::endl;
+            return 1;
         }
     }
 
-    std::cout << "Конец расчета. Построение графика..." << std::endl;
+    std::cout << "Solution is done. Plotting" << std::endl;
     make_gnuplot_script();
-    std::cout << "Заверешениеработы программы..." << std::endl;
 
     return 0;
 }
