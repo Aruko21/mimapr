@@ -2,7 +2,7 @@
 #include <vector>
 #include <cmath>
 
-#define CUBEz
+#define CUBEx
 constexpr double EPS = 1e-16;
 
 constexpr double X_BEGIN = 0.0;
@@ -14,7 +14,7 @@ constexpr double SECOND_BC = 2;
 constexpr size_t LINEAR_DIM = 2;
 constexpr size_t CUBE_DIM = 4;
 
-constexpr size_t ELEMS_NUM = 410;
+constexpr size_t ELEMS_NUM = 20;
 constexpr double L = (X_END - X_BEGIN) / ELEMS_NUM;
 
 std::vector<double> gauss(std::vector<std::vector<double> > &A, std::vector<double> &b) {
@@ -99,14 +99,19 @@ std::vector<double> build_linear_solution(size_t elems_num) {
     A.at(size - 1).at(size - 1) = 71.0;
     A.at(size - 2).at(size - 1) = 0.0;
 
-    b.at(0) = -30.0 * L - FIRST_BC * local_matrix.at(0).at(0);
-    b.at(1) = -60.0 * L - FIRST_BC * local_matrix.at(LINEAR_DIM - 1).at(0);
-    b.at(size - 2) = -60 * L - SECOND_BC * local_matrix.at(0).at(LINEAR_DIM - 1);
-    b.at(size - 1) = -30.0 * L - SECOND_BC * local_matrix.at(LINEAR_DIM - 1).at(LINEAR_DIM - 1);
+    A.at(size / 2).at(size / 2 - 1) = 0.;
+    A.at(size / 2).at(size / 2) = 1.;
+    A.at(size / 2).at(size / 2 + 1) = 0.;
 
     for (size_t i = 2; i < size - 2; ++i) {
         b.at(i) = -60.0 * L;
     }
+
+    b.at(0) = -30.0 * L - FIRST_BC * local_matrix.at(0).at(0);
+    b.at(1) = -60.0 * L - FIRST_BC * local_matrix.at(LINEAR_DIM - 1).at(0);
+    b.at(size - 2) = -60 * L - SECOND_BC * local_matrix.at(0).at(LINEAR_DIM - 1);
+    b.at(size - 1) = -30.0 * L - SECOND_BC * local_matrix.at(LINEAR_DIM - 1).at(LINEAR_DIM - 1);
+    b.at(size / 2) = 0.;
 
     // Solving
     std::vector<double> res = gauss(A, b);
@@ -258,13 +263,18 @@ int main() {
         fprintf(gp, "%lf %lf\n", x.at(i), y_real.at(i));
     }
 
+    fprintf(stdout, "| i  |   X    |   U_real    |    U_FEM    |  Abs error  |\n");
+    for (size_t i = 0; i < x_size; i++) {
+        fprintf(stdout, "| %2lu | %6.3lf | %6.5e | %6.5e | %6.5e |\n", i, x.at(i), y_real.at(i), y.at(i), std::abs(y.at(i) - y_real.at(i)));
+    }
+
     fprintf(gp, "EOD\n");
     fprintf(gp, "set grid\n");
     fprintf(gp, "plot '$predict' using 1:2 with lp lc 'blue' lw 1.5 pt 7 ps 0.5 title 'FEM solution(%zu elements)',"
                 "'$real' using 1:2 with lines lc rgb '#23ca5a' lt 1 lw 2 title 'Analytical solution(%zu elements)',\n",
             ELEMS_NUM, ELEMS_NUM
     );
-    fprintf(stdout, "Absolute error: %lf\n", calc_abs_error(y_real, y));
+    fprintf(stdout, "Max absolute error: %lf\n", calc_abs_error(y_real, y));
 
     return 0;
 }
